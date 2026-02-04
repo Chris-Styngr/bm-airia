@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIRIA API Tester</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    h1 {
+      color: #00d4ff;
+      border-bottom: 2px solid #00d4ff;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #ff6b6b;
+      margin-top: 30px;
+    }
+    .card {
+      background: #16213e;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 15px 0;
+      border: 1px solid #0f3460;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      color: #00d4ff;
+      font-weight: 500;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #0f3460;
+      border-radius: 4px;
+      background: #0f3460;
+      color: #eee;
+      font-size: 14px;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #00d4ff;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    button {
+      background: #00d4ff;
+      color: #1a1a2e;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      margin-top: 15px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #00b8e6;
+    }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 24px;
+      background: #0f3460;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 15px 0;
+      display: none;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00d4ff, #ff6b6b);
+      width: 0%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: #1a1a2e;
+    }
+    .log {
+      background: #0a0a15;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log-entry {
+      margin: 3px 0;
+      padding: 3px 0;
+      border-bottom: 1px solid #1a1a2e;
+    }
+    .log-entry.progress { color: #00d4ff; }
+    .log-entry.complete { color: #4ade80; }
+    .log-entry.error { color: #ff6b6b; }
+    .log-entry.info { color: #888; }
+    .result {
+      background: #0f3460;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    .result a {
+      color: #00d4ff;
+      word-break: break-all;
+    }
+    .inline-group {
+      display: flex;
+      gap: 15px;
+    }
+    .inline-group > div {
+      flex: 1;
+    }
+    .song-list {
+      max-height: 200px;
+      overflow-y: auto;
+      background: #0a0a15;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .song-item {
+      padding: 8px;
+      border-bottom: 1px solid #1a1a2e;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .song-item:hover {
+      background: #16213e;
+    }
+    .song-item.selected {
+      background: #0f3460;
+      border-left: 3px solid #00d4ff;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    .status.success { background: #166534; color: #4ade80; }
+    .status.error { background: #7f1d1d; color: #fca5a5; }
+    .api-key-section {
+      position: sticky;
+      top: 0;
+      background: #1a1a2e;
+      padding: 10px 0;
+      z-index: 100;
+      border-bottom: 1px solid #0f3460;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>AIRIA API Tester</h1>
+
+  <!-- API key is pre-configured, hidden input -->
+  <input type="hidden" id="apiKey">
+
+  <!-- Health Check -->
+  <h2>1. Health Check (GET /api/v1/ping)</h2>
+  <div class="card">
+    <p style="color: #888;">Test if the API is running and your API key is valid.</p>
+    <button id="pingBtn">Test Connection</button>
+    <div id="pingResult" class="result" style="display: none;"></div>
+  </div>
+
+  <!-- Get Songs -->
+  <h2>2. Get Available Songs (GET /api/v1/songs/index-url)</h2>
+  <div class="card">
+    <p style="color: #888;">Fetch the list of available songs for game generation. No API key required.</p>
+    <button id="songsBtn">Load Songs</button>
+    <div id="songsResult" class="result" style="display: none;"></div>
+    <div id="songsList" class="song-list" style="display: none;"></div>
+  </div>
+
+  <!-- Generate Game -->
+  <h2>3. Generate Game (POST /api/v1/generate)</h2>
+  <div class="card">
+    <label for="prompt">Game Prompt</label>
+    <textarea id="prompt" placeholder="Describe your game... e.g., 'A neon cyberpunk endless runner through a futuristic city'">A neon cyberpunk endless runner through a futuristic city with glowing buildings and flying cars</textarea>
+
+    <label for="template">Template</label>
+    <select id="template">
+      <option value="infinite-runner">infinite-runner</option>
+    </select>
+
+    <label for="songId">Song</label>
+    <select id="songId">
+      <option value="">Loading songs...</option>
+    </select>
+
+    <div class="inline-group">
+      <div>
+        <label for="lives">Lives (1-10)</label>
+        <input type="number" id="lives" min="1" max="10" value="3">
+      </div>
+      <div>
+        <label for="speedMultiplier">Speed Multiplier (0.5-3.0)</label>
+        <input type="number" id="speedMultiplier" min="0.5" max="3.0" step="0.25" value="1.0">
+      </div>
+    </div>
+
+    <button id="generateBtn">Generate Game</button>
+
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-bar-fill" id="progressFill">0%</div>
+    </div>
+
+    <div id="generateLog" class="log" style="display: none;"></div>
+    <div id="generateResult" class="result" style="display: none;"></div>
+  </div>
+
+  <script>
+    const BASE_URL = 'https://airia-api-dev-de07de1fb176.herokuapp.com/api/v1';
+
+    // Default API key from Doppler (bitmagic project)
+    const DEFAULT_API_KEY = '/G79Q/Bj87mRRlgvbR6NvSSR8kYys3ihmaW8JTAoooU=';
+
+    // Load saved API key or use default
+    document.getElementById('apiKey').value = localStorage.getItem('airia_api_key') || DEFAULT_API_KEY;
+
+    // Save API key on change
+    document.getElementById('apiKey').addEventListener('input', (e) => {
+      localStorage.setItem('airia_api_key', e.target.value);
+    });
+
+    // Load songs into dropdown on page load
+    async function loadSongsDropdown() {
+      const select = document.getElementById('songId');
+      try {
+        const indexResponse = await fetch(`${BASE_URL}/songs/index-url`);
+        const indexData = await indexResponse.json();
+        const songsResponse = await fetch(indexData.indexUrl);
+        const songsData = await songsResponse.json();
+
+        select.innerHTML = '';
+        for (const [id, song] of Object.entries(songsData.songs)) {
+          const option = document.createElement('option');
+          option.value = song.id;
+          option.textContent = `${song.name} - ${song.artist}`;
+          select.appendChild(option);
+        }
+      } catch (err) {
+        select.innerHTML = '<option value="">Failed to load songs</option>';
+        console.error('Failed to load songs:', err);
+      }
+    }
+    loadSongsDropdown();
+
+    function getApiKey() {
+      return document.getElementById('apiKey').value.trim();
+    }
+
+    function log(containerId, message, type = 'info') {
+      const container = document.getElementById(containerId);
+      container.style.display = 'block';
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function clearLog(containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      container.style.display = 'none';
+    }
+
+    // Health Check
+    document.getElementById('pingBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('pingBtn');
+      const result = document.getElementById('pingResult');
+
+      btn.disabled = true;
+      btn.textContent = 'Testing...';
+
+      try {
+        const response = await fetch(`${BASE_URL}/ping`, {
+          headers: {
+            'Authorization': `Bearer ${getApiKey()}`
+          }
+        });
+
+        const data = await response.json();
+        result.style.display = 'block';
+
+        if (response.ok) {
+          result.innerHTML = `<span class="status success">SUCCESS</span><br><br>` +
+            `<strong>Status:</strong> ${data.status}<br>` +
+            `<strong>Timestamp:</strong> ${data.timestamp}`;
+        } else {
+          result.innerHTML = `<span class="status error">ERROR ${response.status}</span><br><br>` +
+            `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+      } catch (err) {
+        result.style.display = 'block';
+        result.innerHTML = `<span class="status error">ERROR</span><br><br>${err.message}`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Test Connection';
+    });
+
+    // Get Songs
+    document.getElementById('songsBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('songsBtn');
+      const result = document.getElementById('songsResult');
+      const songsList = document.getElementById('songsList');
+
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+
+      try {
+        // First get the index URL
+        const indexResponse = await fetch(`${BASE_URL}/songs/index-url`);
+        const indexData = await indexResponse.json();
+
+        result.style.display = 'block';
+        result.innerHTML = `<strong>Index URL:</strong><br><a href="${indexData.indexUrl}" target="_blank">${indexData.indexUrl}</a>`;
+
+        // Then fetch the actual songs
+        const songsResponse = await fetch(indexData.indexUrl);
+        const songsData = await songsResponse.json();
+
+        songsList.style.display = 'block';
+        songsList.innerHTML = '<strong>Available Songs:</strong><br><br>';
+
+        for (const [id, song] of Object.entries(songsData.songs)) {
+          const div = document.createElement('div');
+          div.className = 'song-item';
+          div.innerHTML = `<strong>${song.name}</strong> by ${song.artist}<br><small style="color: #888;">ID: ${song.id}</small>`;
+          div.addEventListener('click', () => {
+            document.getElementById('songId').value = song.id;
+            document.querySelectorAll('.song-item').forEach(el => el.classList.remove('selected'));
+            div.classList.add('selected');
+          });
+          songsList.appendChild(div);
+        }
+      } catch (err) {
+        result.style.display = 'block';
+        result.innerHTML = `<span class="status error">ERROR</span><br><br>${err.message}`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Load Songs';
+    });
+
+    // Generate Game
+    document.getElementById('generateBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('generateBtn');
+      const progressBar = document.getElementById('progressBar');
+      const progressFill = document.getElementById('progressFill');
+      const result = document.getElementById('generateResult');
+
+      clearLog('generateLog');
+      result.style.display = 'none';
+
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        alert('Please enter your API key first!');
+        return;
+      }
+
+      const payload = {
+        prompt: document.getElementById('prompt').value,
+        template: document.getElementById('template').value,
+        songId: document.getElementById('songId').value,
+        options: {
+          lives: parseInt(document.getElementById('lives').value),
+          speedMultiplier: parseFloat(document.getElementById('speedMultiplier').value)
+        }
+      };
+
+      log('generateLog', `Starting generation with payload:\n${JSON.stringify(payload, null, 2)}`, 'info');
+
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+      progressBar.style.display = 'block';
+      progressFill.style.width = '0%';
+      progressFill.textContent = '0%';
+
+      try {
+        const response = await fetch(`${BASE_URL}/generate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorData)}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(line.slice(6));
+
+                if (event.type === 'progress') {
+                  log('generateLog', `[${event.progress}%] ${event.message}`, 'progress');
+                  progressFill.style.width = `${event.progress}%`;
+                  progressFill.textContent = `${event.progress}%`;
+                } else if (event.type === 'complete') {
+                  log('generateLog', `Generation complete!`, 'complete');
+                  log('generateLog', `Name: ${event.name}`, 'complete');
+                  log('generateLog', `Description: ${event.description}`, 'complete');
+                  log('generateLog', `Build time: ${event.buildTimeMs}ms`, 'complete');
+                  log('generateLog', `Total time: ${event.totalTimeMs}ms`, 'complete');
+
+                  progressFill.style.width = '100%';
+                  progressFill.textContent = '100%';
+
+                  result.style.display = 'block';
+                  result.innerHTML = `
+                    <span class="status success">SUCCESS</span><br><br>
+                    <strong>Game Name:</strong> ${event.name}<br>
+                    <strong>Description:</strong> ${event.description}<br><br>
+                    <strong>Game URL:</strong><br>
+                    <a href="${event.url}" target="_blank">${event.url}</a><br><br>
+                    <button onclick="window.open('${event.url}', '_blank')" style="background: #4ade80;">Play Game</button>
+                  `;
+                } else if (event.type === 'error') {
+                  log('generateLog', `Error: ${event.error}`, 'error');
+                  if (event.details) {
+                    log('generateLog', `Details: ${event.details}`, 'error');
+                  }
+                  result.style.display = 'block';
+                  result.innerHTML = `<span class="status error">ERROR</span><br><br>${event.error}<br>${event.details || ''}`;
+                }
+              } catch (parseErr) {
+                log('generateLog', `Parse error: ${parseErr.message}`, 'error');
+              }
+            } else if (line.startsWith('event: ')) {
+              // Event type line, just for logging
+              log('generateLog', `Event: ${line.slice(7)}`, 'info');
+            }
+          }
+        }
+      } catch (err) {
+        log('generateLog', `Error: ${err.message}`, 'error');
+        result.style.display = 'block';
+        result.innerHTML = `<span class="status error">ERROR</span><br><br>${err.message}`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Generate Game';
+    });
+  </script>
+</body>
+</html>
