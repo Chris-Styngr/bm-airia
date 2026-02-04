@@ -459,6 +459,9 @@
                     <a href="${event.url}" target="_blank">${event.url}</a><br><br>
                     <button onclick="window.open('${event.url}', '_blank')" style="background: #4ade80;">Play Game</button>
                   `;
+
+                  // Auto-open game in new tab
+                  window.open(event.url, '_blank');
                 } else if (event.type === 'error') {
                   log('generateLog', `Error: ${event.error}`, 'error');
                   if (event.details) {
