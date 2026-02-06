@@ -133,7 +133,7 @@
     .inline-group > div {
       flex: 1;
     }
-    .song-list {
+    .song-list, .template-list {
       max-height: 200px;
       overflow-y: auto;
       background: #0a0a15;
@@ -141,16 +141,16 @@
       padding: 10px;
       margin-top: 10px;
     }
-    .song-item {
+    .song-item, .template-item {
       padding: 8px;
       border-bottom: 1px solid #1a1a2e;
       cursor: pointer;
       transition: background 0.2s;
     }
-    .song-item:hover {
+    .song-item:hover, .template-item:hover {
       background: #16213e;
     }
-    .song-item.selected {
+    .song-item.selected, .template-item.selected {
       background: #0f3460;
       border-left: 3px solid #00d4ff;
     }
@@ -189,7 +189,7 @@
   </div>
 
   <!-- Get Songs -->
-  <h2>2. Get Available Songs (GET /api/v1/songs/index-url)</h2>
+  <h2>2. Get Available Songs (GET /api/v1/songs)</h2>
   <div class="card">
     <p style="color: #888;">Fetch the list of available songs for game generation. No API key required.</p>
     <button id="songsBtn">Load Songs</button>
@@ -197,19 +197,28 @@
     <div id="songsList" class="song-list" style="display: none;"></div>
   </div>
 
+  <!-- Get Templates -->
+  <h2>3. Get Available Templates (GET /api/v1/templates)</h2>
+  <div class="card">
+    <p style="color: #888;">Fetch the list of available game templates. No API key required.</p>
+    <button id="templatesBtn">Load Templates</button>
+    <div id="templatesResult" class="result" style="display: none;"></div>
+    <div id="templatesList" class="template-list" style="display: none;"></div>
+  </div>
+
   <!-- Generate Game -->
-  <h2>3. Generate Game (POST /api/v1/generate)</h2>
+  <h2>4. Generate Game (POST /api/v1/generate)</h2>
   <div class="card">
     <label for="prompt">Game Prompt</label>
     <textarea id="prompt" placeholder="Describe your game... e.g., 'A neon cyberpunk endless runner through a futuristic city'">A neon cyberpunk endless runner through a futuristic city with glowing buildings and flying cars</textarea>
 
-    <label for="template">Template</label>
-    <select id="template">
-      <option value="infinite-runner">infinite-runner</option>
+    <label for="templateUid">Template</label>
+    <select id="templateUid">
+      <option value="">Loading templates...</option>
     </select>
 
-    <label for="songId">Song</label>
-    <select id="songId">
+    <label for="songUid">Song</label>
+    <select id="songUid">
       <option value="">Loading songs...</option>
     </select>
 
@@ -223,6 +232,9 @@
         <input type="number" id="speedMultiplier" min="0.5" max="3.0" step="0.25" value="1.0">
       </div>
     </div>
+
+    <label for="webhookUrl">Webhook URL (optional — enables async mode)</label>
+    <input type="url" id="webhookUrl" placeholder="https://your-server.com/webhook">
 
     <button id="generateBtn">Generate Game</button>
 
@@ -250,17 +262,15 @@
 
     // Load songs into dropdown on page load
     async function loadSongsDropdown() {
-      const select = document.getElementById('songId');
+      const select = document.getElementById('songUid');
       try {
-        const indexResponse = await fetch(`${BASE_URL}/songs/index-url`);
-        const indexData = await indexResponse.json();
-        const songsResponse = await fetch(indexData.indexUrl);
-        const songsData = await songsResponse.json();
+        const response = await fetch(`${BASE_URL}/songs`);
+        const data = await response.json();
 
         select.innerHTML = '';
-        for (const [id, song] of Object.entries(songsData.songs)) {
+        for (const song of data.songs) {
           const option = document.createElement('option');
-          option.value = song.id;
+          option.value = song.uid;
           option.textContent = `${song.name} - ${song.artist}`;
           select.appendChild(option);
         }
@@ -270,6 +280,27 @@
       }
     }
     loadSongsDropdown();
+
+    // Load templates into dropdown on page load
+    async function loadTemplatesDropdown() {
+      const select = document.getElementById('templateUid');
+      try {
+        const response = await fetch(`${BASE_URL}/templates`);
+        const data = await response.json();
+
+        select.innerHTML = '';
+        for (const template of data.templates) {
+          const option = document.createElement('option');
+          option.value = template.uid;
+          option.textContent = template.name;
+          select.appendChild(option);
+        }
+      } catch (err) {
+        select.innerHTML = '<option value="">Failed to load templates</option>';
+        console.error('Failed to load templates:', err);
+      }
+    }
+    loadTemplatesDropdown();
 
     function getApiKey() {
       return document.getElementById('apiKey').value.trim();
@@ -336,26 +367,21 @@
       btn.textContent = 'Loading...';
 
       try {
-        // First get the index URL
-        const indexResponse = await fetch(`${BASE_URL}/songs/index-url`);
-        const indexData = await indexResponse.json();
+        const response = await fetch(`${BASE_URL}/songs`);
+        const data = await response.json();
 
         result.style.display = 'block';
-        result.innerHTML = `<strong>Index URL:</strong><br><a href="${indexData.indexUrl}" target="_blank">${indexData.indexUrl}</a>`;
-
-        // Then fetch the actual songs
-        const songsResponse = await fetch(indexData.indexUrl);
-        const songsData = await songsResponse.json();
+        result.innerHTML = `<span class="status success">SUCCESS</span><br><br><strong>${data.songs.length} songs available</strong>`;
 
         songsList.style.display = 'block';
         songsList.innerHTML = '<strong>Available Songs:</strong><br><br>';
 
-        for (const [id, song] of Object.entries(songsData.songs)) {
+        for (const song of data.songs) {
           const div = document.createElement('div');
           div.className = 'song-item';
-          div.innerHTML = `<strong>${song.name}</strong> by ${song.artist}<br><small style="color: #888;">ID: ${song.id}</small>`;
+          div.innerHTML = `<strong>${song.name}</strong> by ${song.artist}<br><small style="color: #888;">UID: ${song.uid}</small>`;
           div.addEventListener('click', () => {
-            document.getElementById('songId').value = song.id;
+            document.getElementById('songUid').value = song.uid;
             document.querySelectorAll('.song-item').forEach(el => el.classList.remove('selected'));
             div.classList.add('selected');
           });
@@ -368,6 +394,45 @@
 
       btn.disabled = false;
       btn.textContent = 'Load Songs';
+    });
+
+    // Get Templates
+    document.getElementById('templatesBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('templatesBtn');
+      const result = document.getElementById('templatesResult');
+      const templatesList = document.getElementById('templatesList');
+
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+
+      try {
+        const response = await fetch(`${BASE_URL}/templates`);
+        const data = await response.json();
+
+        result.style.display = 'block';
+        result.innerHTML = `<span class="status success">SUCCESS</span><br><br><strong>${data.templates.length} templates available</strong>`;
+
+        templatesList.style.display = 'block';
+        templatesList.innerHTML = '<strong>Available Templates:</strong><br><br>';
+
+        for (const template of data.templates) {
+          const div = document.createElement('div');
+          div.className = 'template-item';
+          div.innerHTML = `<strong>${template.name}</strong><br><small style="color: #888;">UID: ${template.uid}</small>`;
+          div.addEventListener('click', () => {
+            document.getElementById('templateUid').value = template.uid;
+            document.querySelectorAll('.template-item').forEach(el => el.classList.remove('selected'));
+            div.classList.add('selected');
+          });
+          templatesList.appendChild(div);
+        }
+      } catch (err) {
+        result.style.display = 'block';
+        result.innerHTML = `<span class="status error">ERROR</span><br><br>${err.message}`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Load Templates';
     });
 
     // Generate Game
@@ -388,21 +453,23 @@
 
       const payload = {
         prompt: document.getElementById('prompt').value,
-        template: document.getElementById('template').value,
-        songId: document.getElementById('songId').value,
+        templateUid: parseInt(document.getElementById('templateUid').value),
+        songUid: parseInt(document.getElementById('songUid').value),
         options: {
           lives: parseInt(document.getElementById('lives').value),
           speedMultiplier: parseFloat(document.getElementById('speedMultiplier').value)
         }
       };
 
+      const webhookUrl = document.getElementById('webhookUrl').value.trim();
+      if (webhookUrl) {
+        payload.webhookUrl = webhookUrl;
+      }
+
       log('generateLog', `Starting generation with payload:\n${JSON.stringify(payload, null, 2)}`, 'info');
 
       btn.disabled = true;
       btn.textContent = 'Generating...';
-      progressBar.style.display = 'block';
-      progressFill.style.width = '0%';
-      progressFill.textContent = '0%';
 
       try {
         const response = await fetch(`${BASE_URL}/generate`, {
@@ -414,10 +481,36 @@
           body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
+        if (!response.ok && response.status !== 202) {
           const errorData = await response.json();
           throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorData)}`);
         }
+
+        // Webhook mode: 202 Accepted with jobId
+        if (response.status === 202) {
+          const data = await response.json();
+          log('generateLog', `Job queued: ${data.jobId}`, 'complete');
+          log('generateLog', `Status: ${data.status}`, 'info');
+          log('generateLog', data.message, 'info');
+
+          result.style.display = 'block';
+          result.innerHTML = `
+            <span class="status success">QUEUED (202)</span><br><br>
+            <strong>Job ID:</strong> ${data.jobId}<br>
+            <strong>Status:</strong> ${data.status}<br>
+            <strong>Message:</strong> ${data.message}<br><br>
+            <p style="color: #888;">Results will be delivered to your webhook URL when complete.</p>
+          `;
+
+          btn.disabled = false;
+          btn.textContent = 'Generate Game';
+          return;
+        }
+
+        // SSE mode: stream progress events
+        progressBar.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressFill.textContent = '0%';
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
