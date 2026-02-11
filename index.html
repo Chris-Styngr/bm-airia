@@ -246,6 +246,24 @@
     <div id="generateResult" class="result" style="display: none;"></div>
   </div>
 
+  <!-- Asset Selection Report -->
+  <h2>5. Asset Selection Report (POST /api/v1/generate/asset-report)</h2>
+  <div class="card">
+    <p style="color: #888;">Preview which assets would be selected for a prompt without generating a full game. Shows AI-generated search descriptions and matching assets ranked by similarity.</p>
+
+    <label for="assetPrompt">Game Prompt</label>
+    <textarea id="assetPrompt" placeholder="Describe your game theme... e.g., 'A tropical beach endless runner with palm trees'">A tropical beach endless runner with palm trees and waves</textarea>
+
+    <label for="assetFormat">Response Format</label>
+    <select id="assetFormat">
+      <option value="json">JSON (structured)</option>
+      <option value="text">Text (human-readable)</option>
+    </select>
+
+    <button id="assetReportBtn">Generate Report</button>
+    <div id="assetReportResult" class="result" style="display: none;"></div>
+  </div>
+
   <script>
     const BASE_URL = 'https://airia-api-dev-de07de1fb176.herokuapp.com/api/v1';
 
@@ -580,6 +598,73 @@
 
       btn.disabled = false;
       btn.textContent = 'Generate Game';
+    });
+
+    // Asset Selection Report
+    document.getElementById('assetReportBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('assetReportBtn');
+      const result = document.getElementById('assetReportResult');
+
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        alert('Please enter your API key first!');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Generating Report...';
+      result.style.display = 'none';
+
+      const payload = {
+        prompt: document.getElementById('assetPrompt').value,
+        format: document.getElementById('assetFormat').value
+      };
+
+      try {
+        const response = await fetch(`${BASE_URL}/generate/asset-report`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorData)}`);
+        }
+
+        result.style.display = 'block';
+
+        if (payload.format === 'text') {
+          const text = await response.text();
+          result.innerHTML = `<span class="status success">SUCCESS</span><br><br><pre style="white-space: pre-wrap; color: #ccc;">${text}</pre>`;
+        } else {
+          const data = await response.json();
+          const summary = data.summary || {};
+
+          let html = `<span class="status success">SUCCESS</span><br><br>`;
+          html += `<strong>Prompt:</strong> ${data.prompt}<br>`;
+          html += `<strong>DB Available:</strong> ${data.dbAvailable}<br><br>`;
+
+          if (summary.uniqueDecorationNames) {
+            html += `<strong>Decorations (${summary.totalDecorations}):</strong> ${summary.uniqueDecorationNames.join(', ')}<br>`;
+          }
+          if (summary.uniqueObstacleNames) {
+            html += `<strong>Obstacles (${summary.totalObstacles}):</strong> ${summary.uniqueObstacleNames.join(', ')}<br>`;
+          }
+
+          html += `<br><details><summary style="cursor: pointer; color: #00d4ff;">View Full JSON Response</summary><pre style="white-space: pre-wrap; color: #ccc; margin-top: 10px;">${JSON.stringify(data, null, 2)}</pre></details>`;
+          result.innerHTML = html;
+        }
+      } catch (err) {
+        result.style.display = 'block';
+        result.innerHTML = `<span class="status error">ERROR</span><br><br>${err.message}`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Generate Report';
     });
   </script>
 </body>
